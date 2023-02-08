@@ -180,7 +180,7 @@ class BERTopicAnalysis:
 def main():
     # define parse arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument('-i', '--input', help="Specify the input file or folder", type=validate_path, required=True) #TODO change to argparse.FileType('r')
+    parser.add_argument('-i', '--input', help="Specify the input file or folder", type=validate_path, required=True) 
     parser.add_argument('-d', '--data_type', choices=['telegram', 'twitter', 'google_news', 'gdelt'], help='Choose a datasource', required=True)
     parser.add_argument('-o', '--output_folder', help="Specify folder for results", required=True)
     parser.add_argument('-k', '--k_cluster', help="number of topic cluster", required=False, default="auto")

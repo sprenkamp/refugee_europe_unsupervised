@@ -8,6 +8,10 @@ plots/*
 *.session-journal
 models/*
 .vscode/*
+*.ipynb_checkpoints/*
+#exceptions
+**data/geodata/**
+!/data/stopwords/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
