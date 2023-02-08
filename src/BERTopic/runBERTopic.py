@@ -122,11 +122,11 @@ class BERTopicAnalysis:
                                 umap_model=umap_model,
                                 hdbscan_model=hdbscan_model,
                                 )
-        if len(self.lines) <= 100000:
+        if len(self.lines) <= 500000:
             topics, probs = self.model.fit_transform(self.text_to_analyse_list)
         else:
             print("too much data using online Topic Modeling") #Only the most recent batch of documents is tracked. If you want to be using online topic modeling for low-memory use cases, then it is advised to also update the .topics_ attribute. Otherwise, variations such as hierarchical topic modeling will not work.
-        text_to_analyse_list_chunks = [self.text_to_analyse_list[i:i+100000] for i in range(0, len(self.text_to_analyse_list), 100000)]
+        text_to_analyse_list_chunks = [self.text_to_analyse_list[i:i+500000] for i in range(0, len(self.text_to_analyse_list), 500000)]
         for text_to_analyse_list_chunk in text_to_analyse_list_chunks:
             self.model.partial_fit(text_to_analyse_list_chunk)
             topics, probs = self.model.fit_transform(text_to_analyse_list_chunk)
@@ -157,9 +157,9 @@ class BERTopicAnalysis:
     # predict the class of each text line in the input file
     def inference(self):
         if self.data_type == "telegram":
-            pred, prob = self.model.transform(self.df['messageText'].values)
+            pred = self.model.transform(self.df['messageText'].values)
         elif self.data_type == "twitter":
-            pred, prob = self.model.transform(self.df['text'].values)
+            pred = self.model.transform(self.df['text'].values)
         elif self.data_type == "google_news":
             #TODO: implement google news inference
             print("google news inference not implemented yet")

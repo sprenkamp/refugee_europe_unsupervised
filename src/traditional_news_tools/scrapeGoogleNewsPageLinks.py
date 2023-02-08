@@ -12,6 +12,7 @@ written_filenames = set(os.listdir("data/news/googleNews/article/"))
 start_time = time.time()
 
 def process_url(col, values):
+    print(col)
     values.title = values.title.replace("/", " ")
     filepath = "data/news/googleNews/article/{0}_{1}_{2}.txt".format(values.title, values.alpha2_code, values.language_code)
     filename = "{0}_{1}_{2}.txt".format(values.title, values.alpha2_code, values.language_code)
@@ -26,7 +27,7 @@ def process_url(col, values):
             print("Error: Failed to establish a connection or request timed out")
         with open(filepath, "w") as f:
             f.write(text)
-            # print(col)
+            
             written_filenames.add(filepath)  # Add the filename to the set after writing to disk
             if col % 1000 ==0:
                 end_time = time.time()
