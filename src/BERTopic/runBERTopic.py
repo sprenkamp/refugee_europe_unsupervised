@@ -113,7 +113,7 @@ class BERTopicAnalysis:
             from hdbscan import HDBSCAN
         #TODO: change sentence transformer/ embedding model for news data  mBERT or XLM-RoBERTa
         umap_model = UMAP(n_components=5, n_neighbors=15, min_dist=0.0)
-        hdbscan_model = HDBSCAN(min_samples=10, gen_min_span_tree=True)
+        hdbscan_model = HDBSCAN(min_samples=10, gen_min_span_tree=True, prediction_data=True)
         self.model = BERTopic(verbose=True,
                                 embedding_model="xlm-r-bert-base-nli-stsb-mean-tokens",
                                 language="multilingual",
@@ -157,9 +157,9 @@ class BERTopicAnalysis:
     # predict the class of each text line in the input file
     def inference(self):
         if self.data_type == "telegram":
-            pred = self.model.transform(self.df['messageText'].values)
+            pred, prob = self.model.transform(self.df['messageText'].values)
         elif self.data_type == "twitter":
-            pred = self.model.transform(self.df['text'].values)
+            pred, prob = self.model.transform(self.text_to_analyse_list)
         elif self.data_type == "google_news":
             #TODO: implement google news inference
             print("google news inference not implemented yet")
