@@ -100,7 +100,7 @@ class BERTopicAnalysis:
     # using basic umap_model and hdbscan_model,
     # as defined in the BERTopic documentation
     def fit_BERTopic(self):
-        if gpu_info:
+        if self.gpu_info:
             print('GPU available, using GPU')
             from cuml.cluster import HDBSCAN #for GPU
             from cuml.manifold import UMAP  #for GPU
