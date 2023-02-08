@@ -3,8 +3,14 @@ import argparse
 from bertopic import BERTopic
 from nltk.corpus import stopwords
 from sklearn.feature_extraction.text import CountVectorizer
-from umap import UMAP 
-from hdbscan import HDBSCAN
+if gpu_info.find('failed') >= 0:
+    print('No GPU available, using CPU')
+    from umap import UMAP 
+    from hdbscan import HDBSCAN
+else:
+    print('GPU available, using GPU')
+    from cuml.cluster import HDBSCAN #for GPU
+    from cuml.manifold import UMAP  #for GPU
 import pandas as pd
 
 #TODO find stopwords list for bg, cs, et, hu, lv, lt, mt, sk, sl, is
@@ -103,8 +109,8 @@ class BERTopicAnalysis:
     # as defined in the BERTopic documentation
     def fit_BERTopic(self):
         #TODO: change sentence transformer/ embedding model for news data  mBERT or XLM-RoBERTa
-        umap_model = UMAP(n_neighbors=25, n_components=10, metric='cosine', low_memory=False, random_state=42)
-        hdbscan_model = HDBSCAN(min_cluster_size=10, metric='euclidean', prediction_data=True)
+        umap_model = UMAP(n_components=5, n_neighbors=15, min_dist=0.0)
+        hdbscan_model = HDBSCAN(min_samples=10, gen_min_span_tree=True)
         self.model = BERTopic(verbose=True,
                               embedding_model="xlm-r-bert-base-nli-stsb-mean-tokens",
                               language="multilingual",
