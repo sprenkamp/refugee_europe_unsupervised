@@ -126,10 +126,10 @@ class BERTopicAnalysis:
             topics, probs = self.model.fit_transform(self.text_to_analyse_list)
         else:
             print("too much data using online Topic Modeling") #Only the most recent batch of documents is tracked. If you want to be using online topic modeling for low-memory use cases, then it is advised to also update the .topics_ attribute. Otherwise, variations such as hierarchical topic modeling will not work.
-        text_to_analyse_list_chunks = [self.text_to_analyse_list[i:i+500000] for i in range(0, len(self.text_to_analyse_list), 500000)]
-        for text_to_analyse_list_chunk in text_to_analyse_list_chunks:
-            self.model.partial_fit(text_to_analyse_list_chunk)
-            topics, probs = self.model.fit_transform(text_to_analyse_list_chunk)
+            text_to_analyse_list_chunks = [self.text_to_analyse_list[i:i+500000] for i in range(0, len(self.text_to_analyse_list), 500000)]
+            for text_to_analyse_list_chunk in text_to_analyse_list_chunks:
+                self.model.partial_fit(text_to_analyse_list_chunk)
+                topics, probs = self.model.fit_transform(text_to_analyse_list_chunk)
 
     # save model and visualizations
     def save_results(self):
