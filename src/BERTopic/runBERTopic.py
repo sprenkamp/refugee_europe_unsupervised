@@ -41,6 +41,8 @@ class BERTopicAnalysis:
     k_cluster: number of clusters to be used for the model
     do_inference: boolean to indicate if the model should also be used for inference, 
                 predicting the class of each text line in the input file
+    data_type: type of data to be used for training the model,
+    gpu_info: boolean to indicate if a GPU is available for training the model
     """
 
     # initialize class
@@ -51,6 +53,7 @@ class BERTopicAnalysis:
         self.k_cluster = k_cluster
         self.do_inference = do_inference
         self.gpu_info = gpu_info
+
     # read data telegram and prepare data for BERTopic
     def load_data_telegram(self):
         self.df = pd.read_csv(self.input)
@@ -112,14 +115,21 @@ class BERTopicAnalysis:
         umap_model = UMAP(n_components=5, n_neighbors=15, min_dist=0.0)
         hdbscan_model = HDBSCAN(min_samples=10, gen_min_span_tree=True)
         self.model = BERTopic(verbose=True,
-                              embedding_model="xlm-r-bert-base-nli-stsb-mean-tokens",
-                              language="multilingual",
-                              nr_topics=self.k_cluster, 
-                              vectorizer_model=vectorizer_model,
-                              umap_model=umap_model,
-                              hdbscan_model=hdbscan_model,
-                              )
-        topics, probs = self.model.fit_transform(self.text_to_analyse_list)
+                                embedding_model="xlm-r-bert-base-nli-stsb-mean-tokens",
+                                language="multilingual",
+                                nr_topics=self.k_cluster, 
+                                vectorizer_model=vectorizer_model,
+                                umap_model=umap_model,
+                                hdbscan_model=hdbscan_model,
+                                )
+        if len(self.lines) <= 100000:
+            topics, probs = self.model.fit_transform(self.text_to_analyse_list)
+        else:
+            print("too much data using online Topic Modeling") #Only the most recent batch of documents is tracked. If you want to be using online topic modeling for low-memory use cases, then it is advised to also update the .topics_ attribute. Otherwise, variations such as hierarchical topic modeling will not work.
+        text_to_analyse_list_chunks = [self.text_to_analyse_list[i:i+100000] for i in range(0, len(self.text_to_analyse_list), 100000)]
+        for text_to_analyse_list_chunk in text_to_analyse_list_chunks:
+            self.model.partial_fit(text_to_analyse_list_chunk)
+            topics, probs = self.model.fit_transform(text_to_analyse_list_chunk)
 
     # save model and visualizations
     def save_results(self):
