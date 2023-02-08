@@ -122,7 +122,7 @@ class BERTopicAnalysis:
                                 umap_model=umap_model,
                                 hdbscan_model=hdbscan_model,
                                 )
-        if len(self.lines) <= 500000:
+        if len(self.text_to_analyse_list) <= 500000:
             topics, probs = self.model.fit_transform(self.text_to_analyse_list)
         else:
             print("too much data using online Topic Modeling") #Only the most recent batch of documents is tracked. If you want to be using online topic modeling for low-memory use cases, then it is advised to also update the .topics_ attribute. Otherwise, variations such as hierarchical topic modeling will not work.
