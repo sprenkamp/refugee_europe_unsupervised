@@ -7,16 +7,21 @@ from umap import UMAP
 from hdbscan import HDBSCAN
 import pandas as pd
 
-#define stopwords
-stopWords = stopwords.words('english') 
-for word in stopwords.words('german'):
-    stopWords.append(word)
-for word in stopwords.words('russian'):
-    stopWords.append(word)
-with open("data/stopwords/stopwords_ua.txt") as file: #add ukrainian stopwords loaded from .txt file
-    ukrstopWords = [line.rstrip() for line in file]
-for stopwords in ukrstopWords:
-    stopWords.append(stopwords)
+#TODO find stopwords list for bg, cs, et, hu, lv, lt, mt, sk, sl, is
+#define stopwords, languages needed: de, nl, fr, bg, hr, el, cs, da, et, fi, fr, hu, en, it, lv, lt, mt, pl, pt, ro, sk, sl, sv, no, is, ro, uk, ru
+
+with open("data/stopwords/stopwords.txt") as file: #none finalised stopwords loaded from .txt file
+    stopWords = [line.rstrip() for line in file]
+
+# stopWords = stopwords.words('english') 
+# for word in stopwords.words('german'):
+#     stopWords.append(word)
+# for word in stopwords.words('russian'):
+#     stopWords.append(word)
+# with open("data/stopwords/stopwords_ua.txt") as file: #add ukrainian stopwords loaded from .txt file
+#     ukrstopWords = [line.rstrip() for line in file]
+# for stopwords in ukrstopWords:
+#     stopWords.append(stopwords)
 
 vectorizer_model = CountVectorizer(ngram_range=(1, 2), stop_words=stopWords) #define vectorizer model with stopwords
 
@@ -58,8 +63,14 @@ class BERTopicAnalysis:
 
     # read data twitter and prepare data for BERTopic
     def load_data_twitter(self):
-        #TODO: implement twitter data loading
-        print("twitter data loading not implemented yet")
+        #TODO: specific processing needed for twitter data?
+        self.df = pd.read_csv(self.input)
+        self.df = self.df[self.df['text'].map(type) == str]
+        self.df.drop_duplicates(subset=['text'], inplace=True)
+        lines = self.df['text'].values
+        self.text_to_analyse_list = [line.rstrip() for line in lines]
+        print("analysing {} twitter posts".format(len(self.text_to_analyse_list)))
+
 
     # load potentially existing model
     def read_model(self):
@@ -91,9 +102,11 @@ class BERTopicAnalysis:
     # using basic umap_model and hdbscan_model,
     # as defined in the BERTopic documentation
     def fit_BERTopic(self):
+        #TODO: change sentence transformer/ embedding model for news data  mBERT or XLM-RoBERTa
         umap_model = UMAP(n_neighbors=25, n_components=10, metric='cosine', low_memory=False, random_state=42)
         hdbscan_model = HDBSCAN(min_cluster_size=10, metric='euclidean', prediction_data=True)
         self.model = BERTopic(verbose=True,
+                              embedding_model="xlm-r-bert-base-nli-stsb-mean-tokens",
                               language="multilingual",
                               nr_topics=self.k_cluster, 
                               vectorizer_model=vectorizer_model,
@@ -127,7 +140,16 @@ class BERTopicAnalysis:
 
     # predict the class of each text line in the input file
     def inference(self):
-        pred, prob = self.model.transform(self.df['messageText'].values)
+        if self.data_type == "telegram":
+            pred, prob = self.model.transform(self.df['messageText'].values)
+        elif self.data_type == "twitter":
+            pred, prob = self.model.transform(self.df['text'].values)
+        elif self.data_type == "google_news":
+            #TODO: implement google news inference
+            print("google news inference not implemented yet")
+        elif self.data_type == "gdelt":
+            #TODO: implement gdelt inference
+            print("gdelt inference not implemented yet")
         self.df['cluster'] = pred
         self.df.to_csv(f"{self.output_folder}/df_model.csv", index=False)
 
@@ -159,7 +181,7 @@ def main():
     # define parse arguments
     parser = argparse.ArgumentParser()
     parser.add_argument('-i', '--input', help="Specify the input file or folder", type=validate_path, required=True) #TODO change to argparse.FileType('r')
-    parser.add_argument('-d', '--data_type', choices=['telegram', 'twitter', 'google_news', 'gdelt'], help='Choose a color: a, b, c, or d', required=True)
+    parser.add_argument('-d', '--data_type', choices=['telegram', 'twitter', 'google_news', 'gdelt'], help='Choose a datasource', required=True)
     parser.add_argument('-o', '--output_folder', help="Specify folder for results", required=True)
     parser.add_argument('-k', '--k_cluster', help="number of topic cluster", required=False, default="auto")
     parser.add_argument('-di', '--do_inference', help="does inference on data", action='store_true' , default=False)
