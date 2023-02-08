@@ -3,14 +3,6 @@ import argparse
 from bertopic import BERTopic
 from nltk.corpus import stopwords
 from sklearn.feature_extraction.text import CountVectorizer
-if gpu_info.find('failed') >= 0:
-    print('No GPU available, using CPU')
-    from umap import UMAP 
-    from hdbscan import HDBSCAN
-else:
-    print('GPU available, using GPU')
-    from cuml.cluster import HDBSCAN #for GPU
-    from cuml.manifold import UMAP  #for GPU
 import pandas as pd
 
 #TODO find stopwords list for bg, cs, et, hu, lv, lt, mt, sk, sl, is
@@ -52,13 +44,13 @@ class BERTopicAnalysis:
     """
 
     # initialize class
-    def __init__(self, input, data_type, output_folder, k_cluster, do_inference):
+    def __init__(self, input, data_type, output_folder, k_cluster, do_inference, gpu_info):
         self.input = input
         self.data_type = data_type
         self.output_folder = output_folder
         self.k_cluster = k_cluster
         self.do_inference = do_inference
-
+        self.gpu_info = gpu_info
     # read data telegram and prepare data for BERTopic
     def load_data_telegram(self):
         self.df = pd.read_csv(self.input)
@@ -108,6 +100,14 @@ class BERTopicAnalysis:
     # using basic umap_model and hdbscan_model,
     # as defined in the BERTopic documentation
     def fit_BERTopic(self):
+        if gpu_info:
+            print('GPU available, using GPU')
+            from cuml.cluster import HDBSCAN #for GPU
+            from cuml.manifold import UMAP  #for GPU
+        else:
+            print('No GPU available, using CPU')
+            from umap import UMAP 
+            from hdbscan import HDBSCAN
         #TODO: change sentence transformer/ embedding model for news data  mBERT or XLM-RoBERTa
         umap_model = UMAP(n_components=5, n_neighbors=15, min_dist=0.0)
         hdbscan_model = HDBSCAN(min_samples=10, gen_min_span_tree=True)
@@ -191,13 +191,15 @@ def main():
     parser.add_argument('-o', '--output_folder', help="Specify folder for results", required=True)
     parser.add_argument('-k', '--k_cluster', help="number of topic cluster", required=False, default="auto")
     parser.add_argument('-di', '--do_inference', help="does inference on data", action='store_true' , default=False)
+    parser.add_argument('-gpu', '--gpu_info', help="does inference on data", action='store_true' , default=False)
     args = parser.parse_args()
     # initialize class
     BERTopic_Analysis = BERTopicAnalysis(args.input,
                                          args.data_type,
                                          args.output_folder,
                                          args.k_cluster,
-                                         args.do_inference
+                                         args.do_inference,
+                                         args.gpu_info
                                          )
     # run all functions
     BERTopic_Analysis.run_all()
