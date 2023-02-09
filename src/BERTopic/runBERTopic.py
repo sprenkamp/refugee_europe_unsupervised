@@ -163,7 +163,7 @@ class BERTopicAnalysis:
                 print("running chunk {} from {}".format(count, len(text_to_analyse_list_chunks)))
                 print("chunk size: {}".format(len(text_to_analyse_list_chunk)))
                 self.model.partial_fit(text_to_analyse_list_chunk)
-                topics, probs = self.model.fit_transform(text_to_analyse_list_chunk)
+                # topics, probs = self.model.fit_transform(text_to_analyse_list_chunk)
 
     # save model and visualizations
     def save_results(self):
