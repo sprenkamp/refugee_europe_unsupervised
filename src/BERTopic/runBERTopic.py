@@ -4,6 +4,9 @@ from bertopic import BERTopic
 from nltk.corpus import stopwords
 from sklearn.feature_extraction.text import CountVectorizer
 import pandas as pd
+from sklearn.cluster import MiniBatchKMeans
+from sklearn.decomposition import IncrementalPCA
+from bertopic.vectorizers import OnlineCountVectorizer
 
 #TODO find stopwords list for bg, cs, et, hu, lv, lt, mt, sk, sl, is
 #define stopwords, languages needed: de, nl, fr, bg, hr, el, cs, da, et, fi, fr, hu, en, it, lv, lt, mt, pl, pt, ro, sk, sl, sv, no, is, ro, uk, ru
@@ -61,6 +64,7 @@ class BERTopicAnalysis:
         self.df["messageText"] = self.df['messageText'].str.split().str.join(' ')
         lines = self.df[self.df['messageText'].str.len() >= 100].messageText.values
         self.text_to_analyse_list = [line.rstrip() for line in lines]
+        print("using {} telegram messages for topic model".format(len(self.text_to_analyse_list)))
 
     # read data twitter and prepare data for BERTopic
     def load_data_twitter(self):
@@ -70,7 +74,7 @@ class BERTopicAnalysis:
         self.df.drop_duplicates(subset=['text'], inplace=True)
         lines = self.df['text'].values
         self.text_to_analyse_list = [line.rstrip() for line in lines]
-        print("analysing {} twitter posts".format(len(self.text_to_analyse_list)))
+        print("using {} twitter posts for topic model".format(len(self.text_to_analyse_list)))
 
 
     # load potentially existing model
@@ -112,9 +116,11 @@ class BERTopicAnalysis:
             from umap import UMAP 
             from hdbscan import HDBSCAN
         #TODO: change sentence transformer/ embedding model for news data  mBERT or XLM-RoBERTa
-        umap_model = UMAP(n_components=5, n_neighbors=15, min_dist=0.0)
-        hdbscan_model = HDBSCAN(min_samples=10, gen_min_span_tree=True, prediction_data=True)
-        self.model = BERTopic(verbose=True,
+
+        if len(self.text_to_analyse_list) <= 500000:
+            umap_model = UMAP(n_components=5, n_neighbors=15, min_dist=0.0)
+            hdbscan_model = HDBSCAN(min_samples=10, gen_min_span_tree=True, prediction_data=True)
+            self.model = BERTopic(verbose=True,
                                 embedding_model="xlm-r-bert-base-nli-stsb-mean-tokens",
                                 language="multilingual",
                                 nr_topics=self.k_cluster, 
@@ -122,11 +128,21 @@ class BERTopicAnalysis:
                                 umap_model=umap_model,
                                 hdbscan_model=hdbscan_model,
                                 )
-        if len(self.text_to_analyse_list) <= 500000:
             topics, probs = self.model.fit_transform(self.text_to_analyse_list)
         else:
             print("too much data using online Topic Modeling") #Only the most recent batch of documents is tracked. If you want to be using online topic modeling for low-memory use cases, then it is advised to also update the .topics_ attribute. Otherwise, variations such as hierarchical topic modeling will not work.
             text_to_analyse_list_chunks = [self.text_to_analyse_list[i:i+500000] for i in range(0, len(self.text_to_analyse_list), 500000)]
+            umap_model = IncrementalPCA(n_components=5)
+            cluster_model = MiniBatchKMeans(n_clusters=50, random_state=0)
+            vectorizer_model = OnlineCountVectorizer(stop_words=stopWords, decay=.01)
+            self.model = BERTopic(verbose=True,
+                                embedding_model="xlm-r-bert-base-nli-stsb-mean-tokens",
+                                language="multilingual",
+                                nr_topics=self.k_cluster, 
+                                vectorizer_model=vectorizer_model,
+                                umap_model=umap_model,
+                                hdbscan_model=cluster_model,
+                                )
             for text_to_analyse_list_chunk in text_to_analyse_list_chunks:
                 self.model.partial_fit(text_to_analyse_list_chunk)
                 topics, probs = self.model.fit_transform(text_to_analyse_list_chunk)
