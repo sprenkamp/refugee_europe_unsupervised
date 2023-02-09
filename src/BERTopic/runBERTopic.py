@@ -8,6 +8,7 @@ from sklearn.cluster import MiniBatchKMeans
 from sklearn.decomposition import IncrementalPCA
 from bertopic.vectorizers import OnlineCountVectorizer
 
+#TODO remove country from data sources
 #TODO find stopwords list for bg, cs, et, hu, lv, lt, mt, sk, sl, is
 #define stopwords, languages needed: de, nl, fr, bg, hr, el, cs, da, et, fi, fr, hu, en, it, lv, lt, mt, pl, pt, ro, sk, sl, sv, no, is, ro, uk, ru
 
@@ -143,7 +144,8 @@ class BERTopicAnalysis:
                                 umap_model=umap_model,
                                 hdbscan_model=cluster_model,
                                 )
-            for text_to_analyse_list_chunk in text_to_analyse_list_chunks:
+            for count, text_to_analyse_list_chunk in enumerate(text_to_analyse_list_chunks, start=1):
+                print("running chunk {} from {}".format(count, len(text_to_analyse_list_chunks)))
                 self.model.partial_fit(text_to_analyse_list_chunk)
                 topics, probs = self.model.fit_transform(text_to_analyse_list_chunk)
 
