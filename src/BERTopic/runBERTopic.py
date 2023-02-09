@@ -7,6 +7,7 @@ import pandas as pd
 from sklearn.cluster import MiniBatchKMeans
 from sklearn.decomposition import IncrementalPCA
 from bertopic.vectorizers import OnlineCountVectorizer
+import random
 
 #TODO remove country from data sources
 #TODO find stopwords list for bg, cs, et, hu, lv, lt, mt, sk, sl, is
@@ -106,6 +107,7 @@ class BERTopicAnalysis:
 
 
     def split_list(self, lst, num_chunks):
+        lst = random.shuffle(lst) # shuffle list to avoid bias in splitting
         chunk_size = len(lst) // num_chunks
         chunks = []
         for i in range(0, len(lst), chunk_size):
