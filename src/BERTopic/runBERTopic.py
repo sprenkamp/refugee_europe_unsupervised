@@ -104,6 +104,21 @@ class BERTopicAnalysis:
         if self.k_cluster.isnumeric():
             self.k_cluster = int(self.k_cluster)
 
+
+    def split_list(self, lst, num_chunks):
+        chunk_size = len(lst) // num_chunks
+        chunks = []
+        for i in range(0, len(lst), chunk_size):
+            chunks.append(lst[i:i + chunk_size])
+        last_chunk_size = len(lst) % num_chunks
+        if last_chunk_size != 0:
+            last_chunk = lst[-last_chunk_size:]
+            chunk_counter = 0  
+            for remainder_last_chunk in last_chunk:
+                chunks[chunk_counter].append(remainder_last_chunk)
+                chunk_counter += 1
+        return chunks
+
     # train BERTopic model we use basic parameters for the model, 
     # using basic umap_model and hdbscan_model,
     # as defined in the BERTopic documentation
@@ -117,8 +132,8 @@ class BERTopicAnalysis:
             from umap import UMAP 
             from hdbscan import HDBSCAN
         #TODO: change sentence transformer/ embedding model for news data  mBERT or XLM-RoBERTa
-
-        if len(self.text_to_analyse_list) <= 500000:
+        chunk_max_size = 500000
+        if len(self.text_to_analyse_list) <= chunk_max_size:
             umap_model = UMAP(n_components=5, n_neighbors=15, min_dist=0.0)
             hdbscan_model = HDBSCAN(min_samples=10, gen_min_span_tree=True, prediction_data=True)
             self.model = BERTopic(verbose=True,
@@ -132,7 +147,7 @@ class BERTopicAnalysis:
             topics, probs = self.model.fit_transform(self.text_to_analyse_list)
         else:
             print("too much data using online Topic Modeling") #Only the most recent batch of documents is tracked. If you want to be using online topic modeling for low-memory use cases, then it is advised to also update the .topics_ attribute. Otherwise, variations such as hierarchical topic modeling will not work.
-            text_to_analyse_list_chunks = [self.text_to_analyse_list[i:i+500000] for i in range(0, len(self.text_to_analyse_list), 500000)]
+            text_to_analyse_list_chunks = self.split_list(self.text_to_analyse_list, (len(self.text_to_analyse_list)//chunk_max_size)+1)
             umap_model = IncrementalPCA(n_components=5)
             cluster_model = MiniBatchKMeans(n_clusters=50, random_state=0)
             vectorizer_model = OnlineCountVectorizer(stop_words=stopWords, decay=.01)
@@ -146,6 +161,7 @@ class BERTopicAnalysis:
                                 )
             for count, text_to_analyse_list_chunk in enumerate(text_to_analyse_list_chunks, start=1):
                 print("running chunk {} from {}".format(count, len(text_to_analyse_list_chunks)))
+                print("chunk size: {}".format(len(text_to_analyse_list_chunk)))
                 self.model.partial_fit(text_to_analyse_list_chunk)
                 topics, probs = self.model.fit_transform(text_to_analyse_list_chunk)
 
