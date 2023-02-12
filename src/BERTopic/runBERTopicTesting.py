@@ -134,7 +134,7 @@ class BERTopicAnalysis:
             from umap import UMAP 
             from hdbscan import HDBSCAN
         #TODO: change sentence transformer/ embedding model for news data  mBERT or XLM-RoBERTa
-        chunk_max_size = 250000
+        chunk_max_size = 350000
         if len(self.text_to_analyse_list) <= chunk_max_size:
             umap_model = UMAP(n_components=5, n_neighbors=15, min_dist=0.0)
             hdbscan_model = HDBSCAN(min_samples=10, gen_min_span_tree=True, prediction_data=True)
@@ -165,11 +165,27 @@ class BERTopicAnalysis:
                 print("running chunk {} from {}".format(count, len(text_to_analyse_list_chunks)))
                 print("chunk size: {}".format(len(text_to_analyse_list_chunk)))
                 self.model.partial_fit(text_to_analyse_list_chunk)
-            
+                self.save_results(self, partial=True, iteration=count)
+                if count==1:
+                    w
+
                 # topics, probs = self.model.fit_transform(text_to_analyse_list_chunk)
 
     # save model and visualizations
-    def save_results(self):
+    def save_results(self, partial=None, iteration=None):
+        if partial:
+            if not os.path.exists(self.output_folder):
+                os.makedirs(self.output_folder)
+                os.makedirs(self.output_folder+"partial/")
+        fig = self.model.visualize_topics()
+        fig.write_html(f"{self.output_folder}+partial/bert_topic_model_distance_model_current_partial.html")
+        fig = self.model.visualize_hierarchy()
+        fig.write_html(f"{self.output_folder}+partial/bert_topic_model_hierarchical_clustering_current_partial.html")
+        fig = self.model.visualize_barchart(top_n_topics=30)
+        fig.write_html(f"{self.output_folder}+partial/bert_topic_model_word_scores_current_partial.html")
+        fig = self.model.visualize_heatmap()
+        fig.write_html(f"{self.output_folder}+partial/bert_topic_model_word_heatmap_current_partial.html")
+        self.model.save(f"{self.output_folder}+partial/BERTopicmodel{iteration}")
         if not os.path.exists(self.output_folder):
             os.makedirs(self.output_folder)
         fig = self.model.visualize_topics()
