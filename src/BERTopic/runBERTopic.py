@@ -134,7 +134,7 @@ class BERTopicAnalysis:
             from umap import UMAP 
             from hdbscan import HDBSCAN
         #TODO: change sentence transformer/ embedding model for news data  mBERT or XLM-RoBERTa
-        chunk_max_size = 250000
+        chunk_max_size = 200000
         if len(self.text_to_analyse_list) <= chunk_max_size:
             umap_model = UMAP(n_components=5, n_neighbors=15, min_dist=0.0)
             hdbscan_model = HDBSCAN(min_samples=10, gen_min_span_tree=True, prediction_data=True)
@@ -150,6 +150,7 @@ class BERTopicAnalysis:
         else:
             print("too much data using online Topic Modeling") #Only the most recent batch of documents is tracked. If you want to be using online topic modeling for low-memory use cases, then it is advised to also update the .topics_ attribute. Otherwise, variations such as hierarchical topic modeling will not work.
             text_to_analyse_list_chunks = self.split_list(self.text_to_analyse_list, (len(self.text_to_analyse_list)//chunk_max_size)+1)
+            #doc_chunks = [all_docs[i:i+1000] for i in range(0, len(all_docs), 1000)] check if this is better for splliting, as mine creates an error
             umap_model = IncrementalPCA(n_components=5)
             cluster_model = MiniBatchKMeans(n_clusters=50, random_state=0)
             vectorizer_model = OnlineCountVectorizer(stop_words=stopWords, decay=.01)
