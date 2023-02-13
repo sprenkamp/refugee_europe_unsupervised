@@ -8,25 +8,31 @@ from sklearn.cluster import MiniBatchKMeans
 from sklearn.decomposition import IncrementalPCA
 from bertopic.vectorizers import OnlineCountVectorizer
 import random
+import re
+import tqdm
 
 #TODO remove country from data sources
 #TODO find stopwords list for bg, cs, et, hu, lv, lt, mt, sk, sl, is
 #define stopwords, languages needed: de, nl, fr, bg, hr, el, cs, da, et, fi, fr, hu, en, it, lv, lt, mt, pl, pt, ro, sk, sl, sv, no, is, ro, uk, ru
 
 with open("data/stopwords/stopwords.txt") as file: #none finalised stopwords loaded from .txt file
-    stopWords = [line.rstrip() for line in file]
+    stopwords = [line.rstrip() for line in file]
 
-# stopWords = stopwords.words('english') 
+with open("data/stopwords/country_stopwords.txt") as file: #load list of countries
+    country_stopwords = [line.rstrip() for line in file]
+print(country_stopwords)
+
+# stopwords = stopwords.words('english') 
 # for word in stopwords.words('german'):
-#     stopWords.append(word)
+#     stopwords.append(word)
 # for word in stopwords.words('russian'):
-#     stopWords.append(word)
+#     stopwords.append(word)
 # with open("data/stopwords/stopwords_ua.txt") as file: #add ukrainian stopwords loaded from .txt file
-#     ukrstopWords = [line.rstrip() for line in file]
-# for stopwords in ukrstopWords:
-#     stopWords.append(stopwords)
+#     ukrstopwords = [line.rstrip() for line in file]
+# for stopwords in ukrstopwords:
+#     stopwords.append(stopwords)
 
-vectorizer_model = CountVectorizer(ngram_range=(1, 2), stop_words=stopWords) #define vectorizer model with stopwords
+vectorizer_model = CountVectorizer(ngram_range=(1, 2), stop_words=stopwords) #define vectorizer model with stopwords
 
 def validate_path(f): #function to check if file exists
     if not os.path.exists(f):
@@ -47,17 +53,17 @@ class BERTopicAnalysis:
     do_inference: boolean to indicate if the model should also be used for inference, 
                 predicting the class of each text line in the input file
     data_type: type of data to be used for training the model,
-    gpu_info: boolean to indicate if a GPU is available for training the model
+    cmul_gpu: boolean to indicate if a GPU is available for training the model
     """
 
     # initialize class
-    def __init__(self, input, data_type, output_folder, k_cluster, do_inference, gpu_info):
+    def __init__(self, input, data_type, output_folder, k_cluster, do_inference, cmul_gpu):
         self.input = input
         self.data_type = data_type
         self.output_folder = output_folder
         self.k_cluster = k_cluster
         self.do_inference = do_inference
-        self.gpu_info = gpu_info
+        self.cmul_gpu = cmul_gpu
 
     # read data telegram and prepare data for BERTopic
     def load_data_telegram(self):
@@ -67,6 +73,7 @@ class BERTopicAnalysis:
         lines = self.df[self.df['messageText'].str.len() >= 100].messageText.values
         self.text_to_analyse_list = [line.rstrip() for line in lines]
         print("using {} telegram messages for topic model".format(len(self.text_to_analyse_list)))
+        #TODO: investigate chunk size rest 2 shouldn't happen
 
     # read data twitter and prepare data for BERTopic
     def load_data_twitter(self):
@@ -76,13 +83,10 @@ class BERTopicAnalysis:
         self.df.drop_duplicates(subset=['text'], inplace=True)
         lines = self.df['text'].values
         self.text_to_analyse_list = [line.rstrip() for line in lines]
+        # self.counter_country = 0
+        self.text_to_analyse_list = [self.remove_countries(utterance, country_stopwords) for utterance in self.text_to_analyse_list]
+        # print(self.counter_country)
         print("using {} twitter posts for topic model".format(len(self.text_to_analyse_list)))
-
-
-    # load potentially existing model
-    def read_model(self):
-        print("loading model")
-        self.model=BERTopic.load(f"{self.output_folder}/BERTopicmodel")
 
     # read data google news and prepare data for BERTopic
     def load_data_google_news(self):
@@ -97,6 +101,21 @@ class BERTopicAnalysis:
     def load_data_gdelt(self):
         #TODO: implement gdelt data loading
         print("gdelt data loading not implemented yet")
+
+    # remove countries from data
+    def remove_countries(self, text, country_stopwords):
+        for country in country_stopwords:
+            if country in text:
+                #self.counter_country += 1
+                text = re.sub(country, '', text) #check if "COUNTRY" is better as replacement
+                text = text.replace("  ", " ")
+        return text
+
+
+    # load potentially existing model
+    def read_model(self):
+        print("loading model")
+        self.model=BERTopic.load(f"{self.output_folder}/BERTopicmodel")
 
     # check if k_cluster is numeric and convert to int if so.
     # this is necessary for BERTopic if the cluster number is given as a string, 
@@ -125,7 +144,7 @@ class BERTopicAnalysis:
     # using basic umap_model and hdbscan_model,
     # as defined in the BERTopic documentation
     def fit_BERTopic(self):
-        if self.gpu_info:
+        if self.cmul_gpu:
             print('GPU available, using GPU')
             from cuml.cluster import HDBSCAN #for GPU
             from cuml.manifold import UMAP  #for GPU
@@ -153,7 +172,7 @@ class BERTopicAnalysis:
             #doc_chunks = [all_docs[i:i+1000] for i in range(0, len(all_docs), 1000)] check if this is better for splliting, as mine creates an error
             umap_model = IncrementalPCA(n_components=5)
             cluster_model = MiniBatchKMeans(n_clusters=50, random_state=0)
-            vectorizer_model = OnlineCountVectorizer(stop_words=stopWords, decay=.01)
+            vectorizer_model = OnlineCountVectorizer() #OnlineCountVectorizer(stopwords=stopwords, decay=.01)
             self.model = BERTopic(verbose=True,
                                 embedding_model="xlm-r-bert-base-nli-stsb-mean-tokens",
                                 language="multilingual",
@@ -239,7 +258,7 @@ def main():
     parser.add_argument('-o', '--output_folder', help="Specify folder for results", required=True)
     parser.add_argument('-k', '--k_cluster', help="number of topic cluster", required=False, default="auto")
     parser.add_argument('-di', '--do_inference', help="does inference on data", action='store_true' , default=False)
-    parser.add_argument('-gpu', '--gpu_info', help="does inference on data", action='store_true' , default=False)
+    parser.add_argument('-cuml_gpu', help="use cmul on GPU", action='store_true' , default=False)
     args = parser.parse_args()
     # initialize class
     BERTopic_Analysis = BERTopicAnalysis(args.input,
@@ -247,7 +266,7 @@ def main():
                                          args.output_folder,
                                          args.k_cluster,
                                          args.do_inference,
-                                         args.gpu_info
+                                         args.cuml_gpu
                                          )
     # run all functions
     BERTopic_Analysis.run_all()
