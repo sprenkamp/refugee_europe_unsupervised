@@ -21,6 +21,9 @@ with open("data/stopwords/stopwords.txt") as file: #none finalised stopwords loa
 with open("data/stopwords/country_stopwords.txt") as file: #load list of countries
     country_stopwords = [line.rstrip() for line in file]
 
+with open("data/stopwords/twitter_stopwords.txt") as file: #load list of countries
+    twitter_stopwords = [line.rstrip() for line in file]
+
 # stopwords = stopwords.words('english') 
 # for word in stopwords.words('german'):
 #     stopwords.append(word)
@@ -31,7 +34,7 @@ with open("data/stopwords/country_stopwords.txt") as file: #load list of countri
 # for stopwords in ukrstopwords:
 #     stopwords.append(stopwords)
 
-vectorizer_model = CountVectorizer(ngram_range=(1, 2), stop_words=stopwords) #define vectorizer model with stopwords
+
 
 def validate_path(f): #function to check if file exists
     if not os.path.exists(f):
@@ -80,6 +83,8 @@ class BERTopicAnalysis:
         self.df = pd.read_csv(self.input)
         self.df = self.df[self.df['text'].map(type) == str]
         self.df.drop_duplicates(subset=['text'], inplace=True)
+        self.df["text"] = self.df['text'].apply(lambda x: re.sub(r"http\S+", "", x))
+        self.df = self.df.sample(n=5000)
         lines = self.df['text'].values
         self.text_to_analyse_list = [line.rstrip() for line in lines]
         # self.counter_country = 0
@@ -128,10 +133,8 @@ class BERTopicAnalysis:
         random.shuffle(lst) # shuffle list to avoid bias in splitting
         chunk_size = len(lst) // num_chunks
         chunks = []
-        print(num_chunks)
         for i in range(1, len(lst), chunk_size):
             chunks.append(lst[i:i + chunk_size])
-        print(len(chunks))
         last_chunk_size = len(lst) % num_chunks
         if last_chunk_size != 0:
             last_chunk = lst[-last_chunk_size:]
@@ -139,7 +142,6 @@ class BERTopicAnalysis:
             for remainder_last_chunk in last_chunk:
                 chunks[chunk_counter].append(remainder_last_chunk)
                 chunk_counter += 1
-        print(len(chunks))
         return chunks
 
     # train BERTopic model we use basic parameters for the model, 
@@ -159,8 +161,9 @@ class BERTopicAnalysis:
         if len(self.text_to_analyse_list) <= chunk_max_size:
             umap_model = UMAP(n_components=5, n_neighbors=15, min_dist=0.0)
             hdbscan_model = HDBSCAN(min_samples=10, gen_min_span_tree=True, prediction_data=True)
+            vectorizer_model = CountVectorizer(ngram_range=(1, 2), stop_words=stopwords) #define vectorizer model with stopwords
             self.model = BERTopic(verbose=True,
-                                embedding_model="xlm-r-bert-base-nli-stsb-mean-tokens",
+                                #embedding_model="xlm-r-bert-base-nli-stsb-mean-tokens",
                                 language="multilingual",
                                 nr_topics=self.k_cluster, 
                                 vectorizer_model=vectorizer_model,
@@ -170,23 +173,35 @@ class BERTopicAnalysis:
             topics, probs = self.model.fit_transform(self.text_to_analyse_list)
         else:
             print("too much data using online Topic Modeling") #Only the most recent batch of documents is tracked. If you want to be using online topic modeling for low-memory use cases, then it is advised to also update the .topics_ attribute. Otherwise, variations such as hierarchical topic modeling will not work.
-            text_to_analyse_list_chunks = self.split_list(self.text_to_analyse_list, (len(self.text_to_analyse_list)//chunk_max_size)+1)
-            #doc_chunks = [all_docs[i:i+1000] for i in range(0, len(all_docs), 1000)] check if this is better for splliting, as mine creates an error
-            umap_model = IncrementalPCA(n_components=5)
-            cluster_model = MiniBatchKMeans(n_clusters=50, random_state=0)
-            vectorizer_model = OnlineCountVectorizer() #OnlineCountVectorizer(stopwords=stopwords, decay=.01)
+            #text_to_analyse_list_chunks = self.split_list(self.text_to_analyse_list, (len(self.text_to_analyse_list)//chunk_max_size)+1)
+            text_to_analyse_list_chunks = [self.text_to_analyse_list[i:i+chunk_max_size] for i in range(0, len(self.text_to_analyse_list), chunk_max_size)] #check if this is better for splliting, as mine creates an error
+            # umap_model = IncrementalPCA() #IncrementalPCA(n_components=5)
+            # cluster_model = MiniBatchKMeans(n_clusters=self.k_cluster, random_state=0)
+            # vectorizer_model = OnlineCountVectorizer(stop_words=stopwords) #OnlineCountVectorizer(stopwords=stopwords, decay=.01)
+            # self.model = BERTopic(verbose=True,
+            #                     #embedding_model="xlm-r-bert-base-nli-stsb-mean-tokens",
+            #                     language="multilingual",
+            #                     nr_topics=self.k_cluster, 
+            #                     vectorizer_model=vectorizer_model,
+            #                     umap_model=umap_model,
+            #                     hdbscan_model=cluster_model,
+            #                     )
+            umap_model = UMAP(n_components=5, n_neighbors=15, min_dist=0.0)
+            hdbscan_model = HDBSCAN(min_samples=10, gen_min_span_tree=True, prediction_data=True)
+            vectorizer_model = CountVectorizer(ngram_range=(1, 2), stop_words=stopwords) #define vectorizer model with stopwords
             self.model = BERTopic(verbose=True,
-                                embedding_model="xlm-r-bert-base-nli-stsb-mean-tokens",
+                                #embedding_model="xlm-r-bert-base-nli-stsb-mean-tokens",
                                 language="multilingual",
                                 nr_topics=self.k_cluster, 
                                 vectorizer_model=vectorizer_model,
                                 umap_model=umap_model,
-                                hdbscan_model=cluster_model,
+                                hdbscan_model=hdbscan_model,
                                 )
             for count, text_to_analyse_list_chunk in enumerate(text_to_analyse_list_chunks, start=1):
                 print("running chunk {} from {}".format(count, len(text_to_analyse_list_chunks)))
                 print("chunk size: {}".format(len(text_to_analyse_list_chunk)))
-                self.model.partial_fit(text_to_analyse_list_chunk)
+                self.model.fit_transform(text_to_analyse_list_chunk) 
+                # self.model.partial_fit(text_to_analyse_list_chunk) TODO: check if this is better, unsuitable as no -1 category?
             
                 # topics, probs = self.model.fit_transform(text_to_analyse_list_chunk)
 
@@ -207,7 +222,7 @@ class BERTopicAnalysis:
     # save representative documents for each topic
     def write_multi_sheet_excel(self):
         writer = pd.ExcelWriter(f"{self.output_folder}/representative_docs.xlsx", engine='xlsxwriter')
-        for i in self.model.get_representative_docs().keys():
+        for i in self.model.get_representative_docs().keys(): #TODO: check topics for online model
             df = pd.DataFrame(self.model.get_representative_docs()[i], columns=['message'])
             df.to_excel(writer, sheet_name=self.model.get_topic_info()[self.model.get_topic_info()['Topic']==i]['Name'].values[0][:31])
         writer.save()
@@ -247,7 +262,7 @@ class BERTopicAnalysis:
             self.k_cluster_type()
             self.fit_BERTopic()
             self.save_results()
-            self.write_multi_sheet_excel()
+            # self.write_multi_sheet_excel()
         #do inference if specified
         if self.do_inference:
             self.inference()

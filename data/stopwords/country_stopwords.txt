@@ -55,6 +55,8 @@ Norge
 England
 Wales
 Scottland
+United Kingdom
+UK
 Liechtenstein
 Iceland
 Island
