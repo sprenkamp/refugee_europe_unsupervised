@@ -20,7 +20,6 @@ with open("data/stopwords/stopwords.txt") as file: #none finalised stopwords loa
 
 with open("data/stopwords/country_stopwords.txt") as file: #load list of countries
     country_stopwords = [line.rstrip() for line in file]
-print(country_stopwords)
 
 # stopwords = stopwords.words('english') 
 # for word in stopwords.words('german'):
@@ -129,15 +128,18 @@ class BERTopicAnalysis:
         random.shuffle(lst) # shuffle list to avoid bias in splitting
         chunk_size = len(lst) // num_chunks
         chunks = []
-        for i in range(0, len(lst), chunk_size):
+        print(num_chunks)
+        for i in range(1, len(lst), chunk_size):
             chunks.append(lst[i:i + chunk_size])
+        print(len(chunks))
         last_chunk_size = len(lst) % num_chunks
         if last_chunk_size != 0:
             last_chunk = lst[-last_chunk_size:]
-            chunk_counter = 0  
+            chunk_counter = 0
             for remainder_last_chunk in last_chunk:
                 chunks[chunk_counter].append(remainder_last_chunk)
                 chunk_counter += 1
+        print(len(chunks))
         return chunks
 
     # train BERTopic model we use basic parameters for the model, 
