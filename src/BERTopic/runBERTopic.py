@@ -21,8 +21,9 @@ with open("data/stopwords/stopwords.txt") as file: #none finalised stopwords loa
 with open("data/stopwords/country_stopwords.txt") as file: #load list of countries
     country_stopwords = [line.rstrip() for line in file]
 
-with open("data/stopwords/twitter_stopwords.txt") as file: #load list of countries
-    twitter_stopwords = [line.rstrip() for line in file]
+#TODO: add twitter stopwords
+# with open("data/stopwords/twitter_stopwords.txt") as file: #load list of countries
+#     twitter_stopwords = [line.rstrip() for line in file]
 
 # stopwords = stopwords.words('english') 
 # for word in stopwords.words('german'):
@@ -157,7 +158,7 @@ class BERTopicAnalysis:
             from umap import UMAP 
             from hdbscan import HDBSCAN
         #TODO: change sentence transformer/ embedding model for news data  mBERT or XLM-RoBERTa
-        chunk_max_size = 200000
+        chunk_max_size = 220000
         if len(self.text_to_analyse_list) <= chunk_max_size:
             umap_model = UMAP(n_components=5, n_neighbors=15, min_dist=0.0)
             hdbscan_model = HDBSCAN(min_samples=10, gen_min_span_tree=True, prediction_data=True)
@@ -174,6 +175,7 @@ class BERTopicAnalysis:
         else:
             print("too much data using online Topic Modeling") #Only the most recent batch of documents is tracked. If you want to be using online topic modeling for low-memory use cases, then it is advised to also update the .topics_ attribute. Otherwise, variations such as hierarchical topic modeling will not work.
             #text_to_analyse_list_chunks = self.split_list(self.text_to_analyse_list, (len(self.text_to_analyse_list)//chunk_max_size)+1)
+            random.shuffle(self.text_to_analyse_list)
             text_to_analyse_list_chunks = [self.text_to_analyse_list[i:i+chunk_max_size] for i in range(0, len(self.text_to_analyse_list), chunk_max_size)] #check if this is better for splliting, as mine creates an error
             # umap_model = IncrementalPCA() #IncrementalPCA(n_components=5)
             # cluster_model = MiniBatchKMeans(n_clusters=self.k_cluster, random_state=0)
