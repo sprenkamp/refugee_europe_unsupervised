@@ -50,6 +50,7 @@ async def callAPI(input_file_path, output_file_path):
             print("scraping chat {} since {}".format(chat, max_time))
         else:
             print('scrapping full chat:', chat)
+            max_time = None
         async with TelegramClient('SessionName', TELEGRAM_API_ID, TELEGRAM_API_HASH) as client:
             # chat_short=chat.split('/')[-1]
             async for message in client.iter_messages(chat, reverse = True, offset_date=max_time):
@@ -59,8 +60,10 @@ async def callAPI(input_file_path, output_file_path):
         df = pd.concat([df, pd.DataFrame({'chat': chatHttps, 
                              'messageDatetime': messageDatetime, 
                              'messageText': messageText})], ignore_index=True)
-
+        df = df.drop_duplicates(['chat', 'messageDatetime', 'messageText'])
+        df = df.sort_values(by=['chat', 'messageDatetime'])
         df.to_csv(f'{output_file_path}', index=False)
+        print("scraped {} telegram messages".format(len(df)))
 
 def main():
     parser = argparse.ArgumentParser()

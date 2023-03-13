@@ -1,0 +1,6 @@
+argparse
+bertopic
+sklearn
+pandas
+regex
+tqdm

@@ -5,47 +5,16 @@ import time
 import requests
 import concurrent.futures
 import os
-
+import warnings
+warnings.filterwarnings("ignore")
 start_time = time.time()
 
 countries = { #TODO: check all translations
 "AT": {"de": ["Ukraine + Flüchtlinge", "Ukraine + flüchten", "Ukraine + Migranten", "Ukraine + migrieren", "Ukraine + Asyl"]}, #Austria
-"BE": {"nl": ["Ukraine + Vluchtelingen", "Ukraine + vluchten", "Ukraine + migranten", "Ukraine + migreren", "Ukraine + asiel"],
-       "fr": ["Ukraine + réfugiés", "Ukraine + réfugiant", "Ukraine + migrants", "Ukraine + migrant", "Ukraine + asile"]}, #Belgium
-"BG": {"bg": ["Украйна + бежанци", "Украйна + бежи", "Украйна + мигранти", "Украйна + мигрират", "Украйна + асил"]}, #Bulgaria
-"HR": {"hr": ["Ukrajina + izbjeglice", "Ukrajina + izbjegavajući", "Ukrajina + migranti", "Ukrajina + migrirajući", "Ukrajina + azil"]}, #Croatia
-"CY": {"el": ["Ουκρανία + πρόσφυγες", "Ουκρανία + πρόσφυγα", "Ουκρανία + μετανάστες", "Ουκρανία + μεταναστεύοντας", "Ουκρανία + ασύλο"]}, #Cyprus
-"CZ": {"cs": ["Ukrajina + uprchlíci", "Ukrajina + uprchající", "Ukrajina + migranti", "Ukrajina + migrace", "Ukrajina + azyl"]}, #Czechia
-"DK": {"da": ["Ukraine + flygtninge", "Ukraine + flygtede", "Ukraine + migrant", "Ukraine + migrere", "Ukraine + asyl"]}, #Denmark
-"EE": {"et": ["Ukraina + põgenikud", "Ukraina + põgenenud", "Ukraina + migrant", "Ukraina + migreerima", "Ukraina + varjupaik"]}, #Estonia
-"FI": {"fi": ["Ukraina + pakolaiset", "Ukraina + pakenevat", "Ukraina + siirtolaiset", "Ukraina + siirtolaisten", "Ukraina + turvapaikka"]}, #Finland
-"FR": {"fr": ["Ukraine + réfugiés", "Ukraine + réfugiant", "Ukraine + migrants", "Ukraine + migrant", "Ukraine + asile"]}, #France
 "DE": {"de": ["Ukraine + Flüchtlinge", "Ukraine + flüchten", "Ukraine + Migranten", "Ukraine + migrieren", "Ukraine + Asyl"]}, #Germany
-"GR": {"el": ["Ουκρανία + πρόσφυγες", "Ουκρανία + πρόσφυγα", "Ουκρανία + μετανάστες", "Ουκρανία + μεταναστεύοντας", "Ουκρανία + ασύλο"]}, #Greece
-"HU": {"hu": ["Ukrajna + menekültek", "Ukrajna + menekül", "Ukrajna + migránsok", "Ukrajna + migráns", "Ukrajna + menekült"]}, #Hungary
-"IE": {"en": ["Ukraine + refugees", "Ukraine + escape", "Ukraine + migrants", "Ukraine + migrate", "Ukraine + asylum"]}, #Ireland
-"IT": {"it": ["Ucraina + rifugiati", "Ucraina + rifugiato", "Ucraina + migranti", "Ucraina + migrante", "Ucraina + asilo"]}, #Italy
-"LV": {"lv": ["Ukraina + izglītības", "Ukraina + izglītības", "Ukraina + migranti", "Ukraina + migrēt", "Ukraina + azils"]}, #Latvia
-"LT": {"lt": ["Ukraina + išvykusių", "Ukraina + išvykusių", "Ukraina + migrantai", "Ukraina + migracijos", "Ukraina + azilas"]}, #Lithuania
-"LU": {"de": ["Ukraine + Flüchtlinge", "Ukraine + flüchten", "Ukraine + Migranten", "Ukraine + migrieren", "Ukraine + Asyl"],
-       "fr": ["Ukraine + réfugiés", "Ukraine + réfugiant", "Ukraine + migrants", "Ukraine + migrant", "Ukraine + asile"]}, #Luxembourg
-"NL": {"nl": ["Ukraine + Vluchtelingen", "Ukraine + vluchten", "Ukraine + migranten", "Ukraine + migreren", "Ukraine + asiel"]}, #Netherlands
-"PL": {"pl": ["Ukraina + uchodźcy", "Ukraina + uciekać", "Ukraina + migrantów", "Ukraina + migracja", "Ukraina + azyl"]}, #Poland
-"PT": {"pt": ["Ucrânia + refugiados", "Ucrânia + refugiado", "Ucrânia + migrantes", "Ucrânia + migrante", "Ucrânia + asilo"]}, #Portugal
-"RO": {"ro": ["Ucraina + refugiați", "Ucraina + refugiat", "Ucraina + migranți", "Ucraina + migranți", "Ucraina + azil"]}, #Romania
-"SK": {"sk": ["Ukrajina + uprchlíci", "Ukrajina + uprchajúci", "Ukrajina + migranti", "Ukrajina + migrácia", "Ukrajina + azyl"]}, #Slovakia
-"SI": {"sl": ["Ukrajina + begunci", "Ukrajina + begunec", "Ukrajina + migranti", "Ukrajina + migracija", "Ukrajina + azil"]}, #Slovenia
-"ES": {"es": ["Ucrania + refugiados", "Ucrania + refugiado", "Ucrania + migrantes", "Ucrania + migrante", "Ucrania + asilo"]}, #Spain
-"SE": {"sv": ["Ukraina + flyktingar", "Ukraina + flykting", "Ukraina + migranter", "Ukraina + migrera", "Ukraina + asyl"]}, #Sweden
 "CH": {"de": ["Ukraine + Flüchtlinge", "Ukraine + flüchten", "Ukraine + Migranten", "Ukraine + migrieren", "Ukraine + Asyl"],
        "fr": ["Ukraine + réfugiés", "Ukraine + réfugiant", "Ukraine + migrants", "Ukraine + migrant", "Ukraine + asile"],
        "it": ["Ucraina + rifugiati", "Ucraina + rifugiato", "Ucraina + migranti", "Ucraina + migrante", "Ucraina + asilo"]}, #Switzerland
-"NO": {"no": ["Ukraina + flyktninger", "Ukraina + flyktet", "Ukraina + migranter", "Ukraina + migrere", "Ukraina + asyl"]}, #Norway
-"GB": {"en": ["Ukraine + refugees", "Ukraine + escape", "Ukraine + migrants", "Ukraine + migrate", "Ukraine + asylum"]}, #United Kingdom
-"LI": {"de": ["Ukraine + Flüchtlinge", "Ukraine + flüchten", "Ukraine + Migranten", "Ukraine + migrieren", "Ukraine + Asyl"]}, #Liechtenstein
-"IS": {"is": ["Úkraína + flyktingar", "Úkraína + flykting", "Úkraína + flyktingar", "Úkraína + flyktingar", "Úkraína + flyktingar"]}, #Iceland
-"MD": {"ro": ["Ucraina + refugiați", "Ucraina + refugiat", "Ucraina + migranți", "Ucraina + migranți", "Ucraina + azil"]}, #Moldova
-"UA": {"uk": ["Україна + біженці", "Україна + біженець", "Україна + мігранти", "Україна + міграція", "Україна + азіл"]}, #Ukraine
 }
 
 
@@ -53,11 +22,11 @@ countries = { #TODO: check all translations
 
 # Create a date range to loop over
 start_date = date(2022, 2, 24)
-end_date = date(2023, 2, 1)
+end_date = date(2023, 2, 24)
 # start_date = start_date.strftime('%a, %d %b %Y %H:%M:%S %Z')
 # end_date = end_date.strftime('%a, %d %b %Y %H:%M:%S %Z')
 delta = timedelta(days=1)
-df_path = 'data/news/googleNews/googleNews.csv'
+df_path = 'data/news/googleNews/googleNewsDACH.csv'
 
 # def check_and_convert_date(date):
 #     if isinstance(date, str):
@@ -134,7 +103,7 @@ def main_loop(start_date, end_date, delta, df_path):
        # Save the final results to a CSV file
        df.drop_duplicates(["title", "published"], inplace=True)
        print("Number of articles found in total:", len(df))
-       df.to_csv('data/news/googleNews/googleNews.csv', index=False)
+       df.to_csv('data/news/googleNews/googleNewsDACH.csv', index=False)
 
 if __name__ == '__main__':
        start_time = time.time()

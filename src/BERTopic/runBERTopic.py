@@ -73,7 +73,7 @@ class BERTopicAnalysis:
         self.df = pd.read_csv(self.input)
         self.df = self.df[self.df['messageText'].map(type) == str]
         self.df["messageText"] = self.df['messageText'].str.split().str.join(' ')
-        lines = self.df[self.df['messageText'].str.len() >= 100].messageText.values
+        lines = self.df[self.df['messageText'].str.len() >= 100 & self.df['messageText'].str.len() <= 1000].messageText.values
         self.text_to_analyse_list = [line.rstrip() for line in lines]
         print("using {} telegram messages for topic model".format(len(self.text_to_analyse_list)))
         #TODO: investigate chunk size rest 2 shouldn't happen
@@ -85,7 +85,7 @@ class BERTopicAnalysis:
         self.df = self.df[self.df['text'].map(type) == str]
         self.df.drop_duplicates(subset=['text'], inplace=True)
         self.df["text"] = self.df['text'].apply(lambda x: re.sub(r"http\S+", "", x))
-        self.df = self.df.sample(n=5000)
+        # self.df = self.df.sample(n=5000)
         lines = self.df['text'].values
         self.text_to_analyse_list = [line.rstrip() for line in lines]
         # self.counter_country = 0
@@ -96,11 +96,17 @@ class BERTopicAnalysis:
     # read data google news and prepare data for BERTopic
     def load_data_google_news(self):
         self.text_to_analyse_list = []
-        for file in os.listdir(self.input):
+        self.file_list = os.listdir(self.input)
+        random.shuffle(self.file_list)
+        self.file_list_final = []
+        for file in self.file_list:
             if file.endswith(".txt"):
                 with open(os.path.join(self.input, file), "r") as f:
-                    lines = f.readlines() #each line should be one paragraph
-                    self.text_to_analyse_list.extend([line.rstrip() for line in lines])
+                    article = f.read()[:1024] #each line should be one paragraph
+                    article = self.remove_countries(article, country_stopwords)
+                    self.text_to_analyse_list.append(article)
+                    self.file_list_final.append(file)
+        print("using {} google news articles for topic model".format(len(self.text_to_analyse_list)))
     
     # read data from gdelt and prepare data for BERTopic
     def load_data_gdelt(self):
@@ -158,7 +164,7 @@ class BERTopicAnalysis:
             from umap import UMAP 
             from hdbscan import HDBSCAN
         #TODO: change sentence transformer/ embedding model for news data  mBERT or XLM-RoBERTa
-        chunk_max_size = 220000
+        chunk_max_size = 250000
         if len(self.text_to_analyse_list) <= chunk_max_size:
             umap_model = UMAP(n_components=5, n_neighbors=15, min_dist=0.0)
             hdbscan_model = HDBSCAN(min_samples=10, gen_min_span_tree=True, prediction_data=True)
@@ -237,12 +243,12 @@ class BERTopicAnalysis:
         elif self.data_type == "twitter":
             pred, prob = self.model.transform(self.text_to_analyse_list)
         elif self.data_type == "google_news":
-            #TODO: implement google news inference
-            print("google news inference not implemented yet")
+            pred, prob = self.model.transform(self.text_to_analyse_list)
+            self.df = pd.DataFrame({'article': self.file_list_final, 'topic': pred})
         elif self.data_type == "gdelt":
             #TODO: implement gdelt inference
             print("gdelt inference not implemented yet")
-        self.df['cluster'] = pred
+        
         self.df.to_csv(f"{self.output_folder}/df_model.csv", index=False)
 
     # run all functions
