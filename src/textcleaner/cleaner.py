@@ -131,8 +131,27 @@ class Cleaner:
         df.to_csv(self.args.output, index=False)
 
     def clean_twitter(self):
-        #TODO implement clean twitter
-        print("TBD")
+        df = pd.read_csv(self.args.input)
+        old_len = len(df)
+        # remove nan and duplicates and empty messages
+        df.dropna(subset=["text"], inplace=True)
+        df.drop_duplicates(subset=["text"], inplace=True)
+        df = df[df["text"] != ""]
+        # remove # and @
+        df["text"] = df["text"].progress_apply(lambda x: re.sub(r'[@#]\S+', " ", x))
+        # remove URLs
+        url_pattern = re.compile(r"https?://\S+") # define a regular expression pattern for URLs
+        # apply the pattern to the DataFrame
+        df["text"] = df["text"].progress_apply(lambda x: re.sub(url_pattern, " ", x))
+        # apply justext to clean multilingual text
+        df["text"] = df["text"].progress_apply(self.clean_multilingual_text)
+        # Remove whitespace characters
+        df["text"] = df["text"].progress_apply(lambda x: re.sub(r'\s+', ' ', x))
+        # remmove messages with no word longer than 5 characters
+        df["text"] = df["text"].progress_apply(self.drop_sequence_without_word)
+        df.dropna(subset=["text"], inplace=True)
+        print("from {} messagges, {} were cleaned and written to processed".format(old_len, len(df)))
+        df.to_csv(self.args.output, index=False)
 
     def run_all(self):
         if self.args.data_type == "telegram":
