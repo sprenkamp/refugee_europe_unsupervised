@@ -1,7 +1,7 @@
 import os
 import argparse
 from bertopic import BERTopic
-#from nltk.corpus import stopwords
+from nltk.corpus import stopwords
 from sklearn.feature_extraction.text import CountVectorizer
 import pandas as pd
 from sklearn.cluster import MiniBatchKMeans
@@ -10,30 +10,28 @@ from bertopic.vectorizers import OnlineCountVectorizer
 import random
 import re
 import tqdm
+nltk.download('stopwords')
 
 #TODO remove country from data sources
 #TODO find stopwords list for bg, cs, et, hu, lv, lt, mt, sk, sl, is
 #define stopwords, languages needed: de, nl, fr, bg, hr, el, cs, da, et, fi, fr, hu, en, it, lv, lt, mt, pl, pt, ro, sk, sl, sv, no, is, ro, uk, ru
 
-with open("data/stopwords/stopwords.txt") as file: #none finalised stopwords loaded from .txt file
-    stopwords = [line.rstrip() for line in file]
+# with open("data/stopwords/stopwords.txt") as file: #none finalised stopwords loaded from .txt file
+#     stopwords = [line.rstrip() for line in file]
 
-with open("data/stopwords/country_stopwords.txt") as file: #load list of countries
-    country_stopwords = [line.rstrip() for line in file]
+# with open("data/stopwords/country_stopwords.txt") as file: #load list of countries
+#     country_stopwords = [line.rstrip() for line in file]
 
-#TODO: add twitter stopwords
-# with open("data/stopwords/twitter_stopwords.txt") as file: #load list of countries
-#     twitter_stopwords = [line.rstrip() for line in file]
-
-# stopwords = stopwords.words('english') 
-# for word in stopwords.words('german'):
-#     stopwords.append(word)
-# for word in stopwords.words('russian'):
-#     stopwords.append(word)
-# with open("data/stopwords/stopwords_ua.txt") as file: #add ukrainian stopwords loaded from .txt file
-#     ukrstopwords = [line.rstrip() for line in file]
-# for stopwords in ukrstopwords:
-#     stopwords.append(stopwords)
+#define stopwords
+stopWords = stopwords.words('english') 
+for word in stopwords.words('german'):
+    stopWords.append(word)
+for word in stopwords.words('russian'):
+    stopWords.append(word)
+with open("data/stopwords/stopwords_ua.txt") as file: #add ukrainian stopwords loaded from .txt file
+    ukrstopWords = [line.rstrip() for line in file]
+for stopwords in ukrstopWords:
+    stopWords.append(stopwords)
 
 
 
@@ -70,10 +68,12 @@ class BERTopicAnalysis:
 
     # read data telegram and prepare data for BERTopic
     def load_data_telegram(self):
-        self.df = pd.read_csv(self.input)
+        self.df = pd.read_csv(self.input_file)
+        self.df.dropna(subset=['messageSender', 'messageText'],inplace=True)
+        self.df.drop_duplicates(subset=['messageText', 'messageSender', 'chat'], keep='first',inplace=True)
         self.df = self.df[self.df['messageText'].map(type) == str]
         self.df["messageText"] = self.df['messageText'].str.split().str.join(' ')
-        lines = self.df[self.df['messageText'].str.len() >= 100 & self.df['messageText'].str.len() <= 1000].messageText.values
+        lines = self.df[(self.df['messageText'].str.len() >= 100) & (self.df['messageText'].str.len() <= 2500)].messageText.values
         self.text_to_analyse_list = [line.rstrip() for line in lines]
         print("using {} telegram messages for topic model".format(len(self.text_to_analyse_list)))
         #TODO: investigate chunk size rest 2 shouldn't happen
@@ -163,56 +163,17 @@ class BERTopicAnalysis:
             print('No GPU available, using CPU')
             from umap import UMAP 
             from hdbscan import HDBSCAN
-        #TODO: change sentence transformer/ embedding model for news data  mBERT or XLM-RoBERTa
-        chunk_max_size = 250000
-        if len(self.text_to_analyse_list) <= chunk_max_size:
-            umap_model = UMAP(n_components=5, n_neighbors=15, min_dist=0.0)
-            hdbscan_model = HDBSCAN(min_samples=10, gen_min_span_tree=True, prediction_data=True)
-            vectorizer_model = CountVectorizer(ngram_range=(1, 2), stop_words=stopwords) #define vectorizer model with stopwords
-            self.model = BERTopic(verbose=True,
-                                #embedding_model="xlm-r-bert-base-nli-stsb-mean-tokens",
-                                language="multilingual",
-                                nr_topics=self.k_cluster, 
-                                vectorizer_model=vectorizer_model,
-                                umap_model=umap_model,
-                                hdbscan_model=hdbscan_model,
-                                )
-            topics, probs = self.model.fit_transform(self.text_to_analyse_list)
-        else:
-            print("too much data using online Topic Modeling") #Only the most recent batch of documents is tracked. If you want to be using online topic modeling for low-memory use cases, then it is advised to also update the .topics_ attribute. Otherwise, variations such as hierarchical topic modeling will not work.
-            #text_to_analyse_list_chunks = self.split_list(self.text_to_analyse_list, (len(self.text_to_analyse_list)//chunk_max_size)+1)
-            random.shuffle(self.text_to_analyse_list)
-            text_to_analyse_list_chunks = [self.text_to_analyse_list[i:i+chunk_max_size] for i in range(0, len(self.text_to_analyse_list), chunk_max_size)] #check if this is better for splliting, as mine creates an error
-            # umap_model = IncrementalPCA() #IncrementalPCA(n_components=5)
-            # cluster_model = MiniBatchKMeans(n_clusters=self.k_cluster, random_state=0)
-            # vectorizer_model = OnlineCountVectorizer(stop_words=stopwords) #OnlineCountVectorizer(stopwords=stopwords, decay=.01)
-            # self.model = BERTopic(verbose=True,
-            #                     #embedding_model="xlm-r-bert-base-nli-stsb-mean-tokens",
-            #                     language="multilingual",
-            #                     nr_topics=self.k_cluster, 
-            #                     vectorizer_model=vectorizer_model,
-            #                     umap_model=umap_model,
-            #                     hdbscan_model=cluster_model,
-            #                     )
-            umap_model = UMAP(n_components=5, n_neighbors=15, min_dist=0.0)
-            hdbscan_model = HDBSCAN(min_samples=10, gen_min_span_tree=True, prediction_data=True)
-            vectorizer_model = CountVectorizer(ngram_range=(1, 2), stop_words=stopwords) #define vectorizer model with stopwords
-            self.model = BERTopic(verbose=True,
-                                #embedding_model="xlm-r-bert-base-nli-stsb-mean-tokens",
-                                language="english",
-                                nr_topics=self.k_cluster, 
-                                vectorizer_model=vectorizer_model,
-                                umap_model=umap_model,
-                                hdbscan_model=hdbscan_model,
-                                )
-            for count, text_to_analyse_list_chunk in enumerate(text_to_analyse_list_chunks, start=1):
-                print("running chunk {} from {}".format(count, len(text_to_analyse_list_chunks)))
-                print("chunk size: {}".format(len(text_to_analyse_list_chunk)))
-                self.model.fit_transform(text_to_analyse_list_chunk) 
-                # self.model.partial_fit(text_to_analyse_list_chunk) TODO: check if this is better, unsuitable as no -1 category?
-            
-                # topics, probs = self.model.fit_transform(text_to_analyse_list_chunk)
-
+        umap_model = UMAP(n_neighbors=25, n_components=10, metric='cosine', low_memory=False, random_state=42)
+        hdbscan_model = HDBSCAN(min_cluster_size=10, metric='euclidean', prediction_data=True)
+        vectorizer_model = CountVectorizer(ngram_range=(1, 2), stop_words=stopWords) #define vectorizer model with stopwords
+        self.model = BERTopic(verbose=True,
+                              language="multilingual",
+                              nr_topics=self.k_cluster, 
+                              vectorizer_model=vectorizer_model,
+                              umap_model=umap_model,
+                              hdbscan_model=hdbscan_model,
+                              )
+        topics, probs = self.model.fit_transform(self.text_to_analyse_list)
     # save model and visualizations
     def save_results(self):
         if not os.path.exists(self.output_folder):
