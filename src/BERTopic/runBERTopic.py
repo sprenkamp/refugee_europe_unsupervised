@@ -1,7 +1,7 @@
 import os
 import argparse
 from bertopic import BERTopic
-from nltk.corpus import stopwords
+#from nltk.corpus import stopwords
 from sklearn.feature_extraction.text import CountVectorizer
 import pandas as pd
 from sklearn.cluster import MiniBatchKMeans
@@ -199,7 +199,7 @@ class BERTopicAnalysis:
             vectorizer_model = CountVectorizer(ngram_range=(1, 2), stop_words=stopwords) #define vectorizer model with stopwords
             self.model = BERTopic(verbose=True,
                                 #embedding_model="xlm-r-bert-base-nli-stsb-mean-tokens",
-                                language="multilingual",
+                                language="english",
                                 nr_topics=self.k_cluster, 
                                 vectorizer_model=vectorizer_model,
                                 umap_model=umap_model,
@@ -265,12 +265,13 @@ class BERTopicAnalysis:
         # check if model already exists
         if os.path.exists(f"{self.output_folder}/BERTopicmodel"):
             self.read_model()
+            self.write_multi_sheet_excel()
         # if not, train model and save results
         else:
             self.k_cluster_type()
             self.fit_BERTopic()
             self.save_results()
-            # self.write_multi_sheet_excel()
+            self.write_multi_sheet_excel()
         #do inference if specified
         if self.do_inference:
             self.inference()

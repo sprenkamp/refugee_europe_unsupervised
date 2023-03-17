@@ -19,7 +19,7 @@ with open("data/stopwords/stopwords_ua.txt") as file: #add ukrainian stopwords l
     ukrstopWords = [line.rstrip() for line in file]
 for stopwords in ukrstopWords:
     stopWords.append(stopwords)
-
+print("WUHU")
 vectorizer_model = CountVectorizer(ngram_range=(1, 2), stop_words=stopWords) #define vectorizer model with stopwords
 
 def validate_file(f): #function to check if file exists
@@ -51,9 +51,11 @@ class BERTopicAnalysis:
     # read input file and prepare data for BERTopic
     def read_data(self):
         self.df = pd.read_csv(self.input_file)
+        self.df.dropna(subset=['messageSender', 'messageText'],inplace=True)
+        self.df.drop_duplicates(subset=['messageText', 'messageSender', 'chat'], keep='first',inplace=True)
         self.df = self.df[self.df['messageText'].map(type) == str]
         self.df["messageText"] = self.df['messageText'].str.split().str.join(' ')
-        lines = self.df[self.df['messageText'].str.len() >= 100].messageText.values
+        lines = self.df[(self.df['messageText'].str.len() >= 100) & (self.df['messageText'].str.len() <= 2500)].messageText.values
         self.text_to_analyse_list = [line.rstrip() for line in lines]
 
     # load potentially existing model
