@@ -2,6 +2,7 @@ import os
 import argparse
 from bertopic import BERTopic
 from nltk.corpus import stopwords
+import nltk
 from sklearn.feature_extraction.text import CountVectorizer
 import pandas as pd
 from sklearn.cluster import MiniBatchKMeans
@@ -58,8 +59,8 @@ class BERTopicAnalysis:
     """
 
     # initialize class
-    def __init__(self, input, data_type, output_folder, k_cluster, do_inference, cmul_gpu):
-        self.input = input
+    def __init__(self, input_file, data_type, output_folder, k_cluster, do_inference, cmul_gpu):
+        self.input_data = input_data
         self.data_type = data_type
         self.output_folder = output_folder
         self.k_cluster = k_cluster
@@ -68,7 +69,7 @@ class BERTopicAnalysis:
 
     # read data telegram and prepare data for BERTopic
     def load_data_telegram(self):
-        self.df = pd.read_csv(self.input_file)
+        self.df = pd.read_csv(self.input_data)
         self.df.dropna(subset=['messageSender', 'messageText'],inplace=True)
         self.df.drop_duplicates(subset=['messageText', 'messageSender', 'chat'], keep='first',inplace=True)
         self.df = self.df[self.df['messageText'].map(type) == str]
@@ -81,7 +82,7 @@ class BERTopicAnalysis:
     # read data twitter and prepare data for BERTopic
     def load_data_twitter(self):
         #TODO: specific processing needed for twitter data?
-        self.df = pd.read_csv(self.input)
+        self.df = pd.read_csv(self.input_data)
         self.df = self.df[self.df['text'].map(type) == str]
         self.df.drop_duplicates(subset=['text'], inplace=True)
         self.df["text"] = self.df['text'].apply(lambda x: re.sub(r"http\S+", "", x))
@@ -96,12 +97,12 @@ class BERTopicAnalysis:
     # read data google news and prepare data for BERTopic
     def load_data_google_news(self):
         self.text_to_analyse_list = []
-        self.file_list = os.listdir(self.input)
+        self.file_list = os.listdir(self.input_data)
         random.shuffle(self.file_list)
         self.file_list_final = []
         for file in self.file_list:
             if file.endswith(".txt"):
-                with open(os.path.join(self.input, file), "r") as f:
+                with open(os.path.join(self.input_data, file), "r") as f:
                     article = f.read()[:1024] #each line should be one paragraph
                     article = self.remove_countries(article, country_stopwords)
                     self.text_to_analyse_list.append(article)
@@ -240,7 +241,7 @@ class BERTopicAnalysis:
 def main():
     # define parse arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument('-i', '--input', help="Specify the input file or folder", type=validate_path, required=True) 
+    parser.add_argument('-i', '--input_data', help="Specify the input file or folder", type=validate_path, required=True) 
     parser.add_argument('-d', '--data_type', choices=['telegram', 'twitter', 'google_news', 'gdelt'], help='Choose a datasource', required=True)
     parser.add_argument('-o', '--output_folder', help="Specify folder for results", required=True)
     parser.add_argument('-k', '--k_cluster', help="number of topic cluster", required=False, default="auto")
@@ -248,7 +249,7 @@ def main():
     parser.add_argument('-cuml_gpu', help="use cmul on GPU", action='store_true' , default=False)
     args = parser.parse_args()
     # initialize class
-    BERTopic_Analysis = BERTopicAnalysis(args.input,
+    BERTopic_Analysis = BERTopicAnalysis(args.input_data,
                                          args.data_type,
                                          args.output_folder,
                                          args.k_cluster,
