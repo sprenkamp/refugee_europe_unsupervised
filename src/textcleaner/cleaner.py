@@ -5,18 +5,12 @@ import justext
 import lxml.etree as etree
 import re
 import pandas as pd
+from textblob import TextBlob
+import preprocessor as p
+from autocorrect import Speller
+import emoji
 
 tqdm.pandas()
-
-# string = "hello www.google.com how are you?"
-
-# # define a regular expression pattern for URLs
-# url_pattern = re.compile(r"https?://\S+")
-
-# # remove any occurrence of URLs in the string
-# string = re.sub(url_pattern, "", string)
-
-# print(string)
 
 
 def validate_path(f): #function to check if file exists
@@ -28,6 +22,9 @@ def validate_path(f): #function to check if file exists
 class Cleaner:
     def __init__(self, args):
         self.args = args
+        self.spell = Speller(lang='en') #we are using autocorrect to correct spelling mistakes most tweets are in english
+        p.set_options(p.OPT.URL, p.OPT.EMOJI, p.OPT.SMILEY) #we are removing urls, emojis, smileys and numbers, RTs and hashtags and mentions are removed seperately
+
 
     def clean_multilingual_text(self, text):
         try:
@@ -46,6 +43,20 @@ class Cleaner:
             return text
         else:
             return None
+        
+    def blob(self, text):
+            blob = TextBlob(text)
+            return str(blob.correct())
+    
+    def remove_emojis(self,text):
+        # Convert emojis to textual representation
+        text = emoji.demojize(text)
+        # Remove emojis and other non-alphanumeric characters
+        text = re.sub(r'[^\w\s]', '', text)
+        # Remove whitespace characters
+        text = re.sub(r'\s+', ' ', text)
+        return text.strip()
+
     
     def clean_news(self):
         files = os.listdir(self.args.input)
@@ -57,7 +68,7 @@ class Cleaner:
                 except UnicodeDecodeError:
                     continue
                 #TODO: better check list
-                check_list = ["ukrainer", "ukrainian", "flüchtling", "flüchten", "migrant", "migrieren" , "asyl"] 
+                check_list = ["ukraine", "Ucraina", "ukrainer", "ukrainerin", "ukrainien", "ukrainienne", "ukrainian", "flüchtling", "réfugié", "fugitif", "rifugiato","flüchten", "fuggire", "fuir", "migrant", "migrieren", "migrer", "migrare", "asyl", "asilo", "asile", "asylum"] 
                 if any(item.lower() in full_article.lower() for item in check_list):
                     f.seek(0)
                     lines = f.readlines()  # read all lines into a list
@@ -77,16 +88,15 @@ class Cleaner:
                             else:
                                 final_lines.append(line)
                     
-                    paragraph = ' '.join(final_lines)
+                    paragraph = ''.join(final_lines)
                     url_pattern = re.compile(r"https?://\S+") # define a regular expression pattern for URLs
                     paragraph = re.sub(url_pattern, " ", paragraph) # remove any occurrence of URLs in the string
-                    try:
-                        cleaned_text = self.clean_multilingual_text(paragraph)
-                    except etree.ParserError as e:
-                        continue
-                    if len(cleaned_text.split())>=10:
-                        with open(self.args.output+file, "w") as w:
-                            w.write(cleaned_text)
+                    if len(paragraph.split())>=10:
+                        try:
+                            with open(self.args.output+file, "w") as w:
+                                w.write(paragraph)
+                        except OSError:
+                            continue
         print("from {} articles, {} were cleaned and written to processed".format(len(files), len(os.listdir(self.args.output))))
         csv_file = "data/news/googleNews/googleNewsDACH.csv"
 
@@ -107,7 +117,7 @@ class Cleaner:
 
         # Save the updated CSV file
         df.to_csv(csv_file.split(".")[0]+"_clean.text", index=False)
-        print("saved csv file to {}".format(csv_file.split(".")[0]+"_clean.text"))
+        print("saved csv file to {}".format(csv_file.split(".")[0]+"_clean.csv"))
                         
 
             
@@ -119,8 +129,6 @@ class Cleaner:
         url_pattern = re.compile(r"https?://\S+") # define a regular expression pattern for URLs
         # apply the pattern to the DataFrame
         df["messageText"] = df["messageText"].progress_apply(lambda x: re.sub(url_pattern, " ", x))
-        # apply justext to clean multilingual text
-        df["messageText"] = df["messageText"].progress_apply(self.clean_multilingual_text)
         # Remove whitespace characters
         df["messageText"] = df["messageText"].progress_apply(lambda x: re.sub(r'\s+', ' ', x))
         # remmove messages with no word longer than 5 characters
@@ -138,19 +146,26 @@ class Cleaner:
         df.drop_duplicates(subset=["text"], inplace=True)
         df = df[df["text"] != ""]
         # remove # and @
-        df["text"] = df["text"].progress_apply(lambda x: re.sub(r'[@#]\S+', " ", x))
+        df["text"] = df["text"].progress_apply(lambda x: re.sub(r'[@#]', " ", x))
+        # remove RT
+        df["text"] = df["text"].progress_apply(lambda x: re.sub(r'RT', "", x))
         # remove URLs
         url_pattern = re.compile(r"https?://\S+") # define a regular expression pattern for URLs
-        # apply the pattern to the DataFrame
         df["text"] = df["text"].progress_apply(lambda x: re.sub(url_pattern, " ", x))
-        # apply justext to clean multilingual text
-        df["text"] = df["text"].progress_apply(self.clean_multilingual_text)
         # Remove whitespace characters
         df["text"] = df["text"].progress_apply(lambda x: re.sub(r'\s+', ' ', x))
         # remmove messages with no word longer than 5 characters
         df["text"] = df["text"].progress_apply(self.drop_sequence_without_word)
+        # convert to string
+        df["text"] = df["text"].astype(str)
+        # df['text'] = df['text'].progress_apply(p.clean)
+        # remove emojis
+        # df["text"] = df["text"].progress_apply(lambda x: emoji.get_emoji_regexp().sub(u'', x))
+        df["text"] = df["text"].progress_apply(self.remove_emojis)
         df.dropna(subset=["text"], inplace=True)
+        df["text"] = df["text"].progress_apply(lambda x: x.strip())
         print("from {} messagges, {} were cleaned and written to processed".format(old_len, len(df)))
+
         df.to_csv(self.args.output, index=False)
 
     def run_all(self):

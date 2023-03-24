@@ -31,6 +31,7 @@ async def callAPI(input_file_path, output_file_path):
     :input_file_path: .txt file containing the list of chats to scrape, each line should represent one chat
     :output_folder_path: folder path where the output CSV file will be saved containing the scraped data
     """
+
     with open(input_file_path) as file:
         chats = file.readlines()
         chats = [chat.replace('\n','') for chat in chats if not chat.startswith("#")]
@@ -66,6 +67,10 @@ async def callAPI(input_file_path, output_file_path):
         print("scraped {} telegram messages".format(len(df)))
 
 def main():
+    """
+    example usage in command line:
+    python src/telegram_tools/scrapeTelegramChannelMessages.py -i data/telegram/queries/DACH.txt -o data/telegram/DACH/df.csv
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument('-i', '--input_file', help="Specify the input file", type=validate_file, required=True)
     parser.add_argument('-o', '--output_file', help="Specify location of output folder", required=True)
