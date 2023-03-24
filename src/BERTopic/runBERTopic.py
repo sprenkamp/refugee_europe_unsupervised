@@ -189,8 +189,9 @@ class BERTopicAnalysis:
         umap_model = UMAP(n_neighbors=25, n_components=10, metric='cosine', low_memory=False, random_state=42)
         hdbscan_model = HDBSCAN(min_cluster_size=min_cluster_size, metric='euclidean', prediction_data=True)
         vectorizer_model = CountVectorizer(ngram_range=(1, 2), stop_words=stopWords) #define vectorizer model with stopwords
-        hdbscan_model = KMeans(n_clusters=25)
+        # hdbscan_model = KMeans(n_clusters=25)
         self.model = BERTopic(verbose=True,
+                              #embedding_model="paraphrase-MiniLM-L6-v2",
                               language="multilingual",
                               nr_topics=self.k_cluster, 
                               vectorizer_model=vectorizer_model,
